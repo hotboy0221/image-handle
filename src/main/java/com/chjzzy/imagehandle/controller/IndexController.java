@@ -14,7 +14,7 @@ public class IndexController {
     private HandleService1 handleService1;
     @RequestMapping(value = "/dofirst")
     public CommonReturnType doFirst(){
-        return CommonReturnType.create(handleService1.count());
+        return CommonReturnType.create(null);
     }
 
     @RequestMapping(value = "/dosecond")

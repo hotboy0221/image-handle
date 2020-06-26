@@ -2,8 +2,11 @@ package com.chjzzy.imagehandle;
 
 import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.response.BusinessException;
+import com.chjzzy.imagehandle.service.HandleService1;
+import com.chjzzy.imagehandle.service.impl.HandleServiceImpl1;
 import com.chjzzy.imagehandle.util.HadoopUtil;
 import com.chjzzy.imagehandle.util.HbaseUtil;
+import org.apache.hadoop.fs.FileStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +19,10 @@ class ImageHandleApplicationTests {
     private HadoopUtil hadoopUtil;
     @Autowired
     private HbaseUtil hbaseUtil;
+    @Autowired
+    private HandleService1 handleService1;
+
+
     @Test
     void hadoopTest() throws IOException, BusinessException {
         ImageModel imageModel =hadoopUtil.getImageModel("image-data/bossbase图片库/1.bmp");
@@ -27,7 +34,13 @@ class ImageHandleApplicationTests {
             }
         }
     }
+    @Test
+    void getAllImagePath() throws IOException {
+        FileStatus[] fileStatuses=hadoopUtil.getSonPath("image-data/bossbase图片库");
+        System.out.println(fileStatuses[0].getPath().getName());
+        System.out.println(fileStatuses[2].getPath().getName());
 
+    }
     @Test
     void hbaseTest() throws IOException {
 //        hbaseUtil.insertData("image","image111","info","bytecode","hahahaha");
@@ -35,7 +48,7 @@ class ImageHandleApplicationTests {
         System.out.println(hbaseUtil.getData("image","image111","info","bytecode"));
     }
     @Test
-    void mapreduceTest(){
-
+    void mapreduceTest() throws InterruptedException, IOException, ClassNotFoundException {
+        handleService1.count();
     }
 }

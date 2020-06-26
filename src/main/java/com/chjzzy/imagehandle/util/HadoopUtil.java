@@ -4,6 +4,7 @@ import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.response.BusinessException;
 import com.chjzzy.imagehandle.response.EmBusinessError;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class HadoopUtil {
@@ -33,7 +36,7 @@ public class HadoopUtil {
 
     public ImageModel getImageModel(String path) throws IOException, BusinessException {
         Path file=new Path(path);
-        if(fileSystem.exists(file)){
+        if(fileSystem.exists(file)&&file.getName().matches(".*\\.bmp")){
             InputStream in=fileSystem.open(file);
             BufferedImage image= ImageIO.read(in);
             int [][]arr=new int[image.getHeight()][image.getWidth()];
@@ -50,8 +53,16 @@ public class HadoopUtil {
             return imageModel;
         }else throw new BusinessException(EmBusinessError.Path_Not_Exist);
     }
-
+    //获取文件夹下一级中的所有文件路径
+    public FileStatus[] getSonPath(String dirPath) throws IOException {
+        FileStatus[] fileStatusList=fileSystem.listStatus(new Path(dirPath));
+        return fileStatusList;
+    }
     public Configuration getConfiguration() {
         return configuration;
+    }
+
+    public FileSystem getFileSystem() {
+        return fileSystem;
     }
 }
