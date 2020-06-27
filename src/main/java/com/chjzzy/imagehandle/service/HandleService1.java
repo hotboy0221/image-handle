@@ -12,5 +12,5 @@ public interface HandleService1 {
     void count() throws IOException, ClassNotFoundException, InterruptedException;
 
     //获取所有图片信息
-    List<ImageModel> getAllImageModel() throws IOException;
+    List<ImageModel> getAllImageModel(int page) throws IOException;
 }

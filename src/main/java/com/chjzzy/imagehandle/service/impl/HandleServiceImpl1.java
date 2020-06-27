@@ -23,6 +23,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +55,9 @@ public class HandleServiceImpl1 implements HandleService1 {
             //将数据插入到Hbase
             String filename=(String)key;
             filename=filename.substring(0,filename.length()-4);
-            hbaseUtil.insertData("image",filename,"info","bytecode",value.getBytes());
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", stream);
+            hbaseUtil.insertData("image",filename,"info","bytecode",new String(Base64.getEncoder().encode(stream.toByteArray())).getBytes());
         }
     }
     public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{
@@ -107,28 +110,14 @@ public class HandleServiceImpl1 implements HandleService1 {
                 String[] strs=line.split("\t");
                 hbaseUtil.insertData("image",name,"statistic",strs[0],strs[1].getBytes());
             }
+            break;
         }
     }
 
     @Override
-    public List<ImageModel> getAllImageModel() throws IOException {
+    public List<ImageModel> getAllImageModel(int page) throws IOException {
         FileStatus[]fileStatuses=hadoopUtil.getSonPath("output-data/");
-        List<ImageModel>imageModelList=new ArrayList<>();
-        for(FileStatus fileStatus:fileStatuses){
-            String name=fileStatus.getPath().getName();
-            ImageModel imageModel=new ImageModel();
-            imageModel.setName(name);
-            imageModel.setBytecode(hbaseUtil.getData("image",name,"info","bytecode"));
-            int []statistic=new int[256];
-            for(int i=0;i<256;i++){
-                byte[] num=hbaseUtil.getData("image",name,"statistic",String.valueOf(i));
-                if(num!=null)
-                statistic[i]=Integer.valueOf(new String(num));
-            }
-            imageModel.setStatistic(statistic);
-            imageModelList.add(imageModel);
-        }
-        return imageModelList;
+        return hbaseUtil.getAllImageModel(fileStatuses,page,50);
     }
 
 

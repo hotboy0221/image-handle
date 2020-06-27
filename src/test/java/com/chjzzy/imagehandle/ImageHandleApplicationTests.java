@@ -27,8 +27,9 @@ class ImageHandleApplicationTests {
 
 
     @Test
-    void hadoopTest2() throws IOException, BusinessException {
-
+    void hadoopTest2() throws IOException, BusinessException, InterruptedException, ClassNotFoundException {
+//        handleService1.count();
+        System.out.println(new String(handleService1.getAllImageModel(1).get(0).getBytecode()));
     }
     @Test
     void getAllImagePath() throws IOException {

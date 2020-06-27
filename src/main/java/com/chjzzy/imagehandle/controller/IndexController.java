@@ -3,21 +3,20 @@ package com.chjzzy.imagehandle.controller;
 import com.chjzzy.imagehandle.response.CommonReturnType;
 import com.chjzzy.imagehandle.service.HandleService1;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
+@CrossOrigin()
 @RestController
 @RequestMapping(value = "/imagehandle")
 public class IndexController {
     @Autowired
     private HandleService1 handleService1;
     @RequestMapping(value = "/dofirst")
-    public CommonReturnType doFirst() throws IOException, InterruptedException, ClassNotFoundException {
+    public CommonReturnType doFirst(@RequestParam(name = "page")int page) throws IOException, InterruptedException, ClassNotFoundException {
         handleService1.count();
-        return CommonReturnType.create(handleService1.getAllImageModel());
+        return CommonReturnType.create(handleService1.getAllImageModel(page));
     }
 
     @RequestMapping(value = "/dosecond")
