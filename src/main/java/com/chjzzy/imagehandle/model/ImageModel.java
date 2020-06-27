@@ -2,8 +2,9 @@ package com.chjzzy.imagehandle.model;
 
 public class ImageModel {
     private String name;
-    private int[][] pixels;
-    private int[]nums;
+    private byte[] bytecode;
+    private int[]statistic;
+
     public String getName() {
         return name;
     }
@@ -12,19 +13,19 @@ public class ImageModel {
         this.name = name;
     }
 
-    public int[][] getPixels() {
-        return pixels;
+    public byte[] getBytecode() {
+        return bytecode;
     }
 
-    public void setPixels(int[][] pixels) {
-        this.pixels = pixels;
+    public void setBytecode(byte[] bytecode) {
+        this.bytecode = bytecode;
     }
 
-    public int[] getNums() {
-        return nums;
+    public int[] getStatistic() {
+        return statistic;
     }
 
-    public void setNums(int[] nums) {
-        this.nums = nums;
+    public void setStatistic(int[] statistic) {
+        this.statistic = statistic;
     }
 }

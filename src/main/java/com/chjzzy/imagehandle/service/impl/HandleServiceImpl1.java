@@ -3,7 +3,9 @@ package com.chjzzy.imagehandle.service.impl;
 import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.service.HandleService1;
 import com.chjzzy.imagehandle.util.HadoopUtil;
+import com.chjzzy.imagehandle.util.HbaseUtil;
 import com.chjzzy.imagehandle.util.ImageFileInputFormat;
+import com.chjzzy.imagehandle.util.SpringContextUtil;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
@@ -19,58 +21,25 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 
 @Service
 public class HandleServiceImpl1 implements HandleService1 {
     @Autowired
     private HadoopUtil hadoopUtil;
-
-
-    @PostConstruct
-    private void init() throws IOException {
-
-    }
-
-    @Override
-    public void count() throws IOException, ClassNotFoundException, InterruptedException {
-        FileStatus []fileStatusList=hadoopUtil.getSonPath("image-data/bossbase图片库");
-
-
-        for(FileStatus fileStatus:fileStatusList){
-                    Job job=Job.getInstance(hadoopUtil.getConfiguration());
-                    job.setMapperClass(mapperHandle.class);
-                    job.setReducerClass(reducerHandle.class);
-                    job.setInputFormatClass(ImageFileInputFormat.class);
-                    job.setOutputKeyClass(IntWritable.class);
-                    job.setOutputValueClass(IntWritable.class);
-                    StringBuilder sb=new StringBuilder();
-                    sb.append("output-data/");
-                    String name=fileStatus.getPath().getName();
-                    sb.append(name.substring(0,name.length()-4));
-                    Path outputPath=new Path(sb.toString());
-                    if(hadoopUtil.getFileSystem().exists(outputPath)){
-                        hadoopUtil.getFileSystem().delete(outputPath,true);
-                    }
-                    //mapreduce
-                    FileInputFormat.setInputPaths(job,fileStatus.getPath());
-                    FileOutputFormat.setOutputPath(job,outputPath);
-                    job.submit();
-            }
-    }
-
+    @Autowired
+    private HbaseUtil hbaseUtil;
     public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{
+
         private IntWritable writeValue=new IntWritable(1);
         private IntWritable writeKey=new IntWritable();
         public void map(Object key, BytesWritable value, Context context) throws IOException,InterruptedException{
+            HbaseUtil hbaseUtil= (HbaseUtil) SpringContextUtil.getBean("hbaseUtil");
             BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
+            //获取图片灰度值矩阵
             int [][]arr=new int[image.getHeight()][image.getWidth()];
             for(int i=0;i<image.getHeight();i++) {
                 for(int j=0;j<image.getWidth();j++) {
@@ -82,7 +51,10 @@ public class HandleServiceImpl1 implements HandleService1 {
                     context.write(writeKey,writeValue);
                 }
             }
-
+            //将数据插入到Hbase
+            String filename=(String)key;
+            filename=filename.substring(0,filename.length()-4);
+            hbaseUtil.insertData("image",filename,"info","bytecode",value.getBytes());
         }
     }
     public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{
@@ -97,4 +69,67 @@ public class HandleServiceImpl1 implements HandleService1 {
             context.write(key,writeValue);
         }
     }
+
+    @Override
+    public void count() throws IOException, ClassNotFoundException, InterruptedException {
+        FileStatus []fileStatusList=hadoopUtil.getSonPath("image-data/bossbase图片库");
+        for(FileStatus fileStatus:fileStatusList){
+            StringBuilder sb=new StringBuilder();
+            sb.append("output-data/");
+            String name=fileStatus.getPath().getName().substring(0,fileStatus.getPath().getName().length()-4);
+            sb.append(name);
+            Path outputPath=new Path(sb.toString());
+            if(hadoopUtil.getFileSystem().exists(outputPath)){
+                sb.append(" already exists");
+                System.out.println(sb.toString());
+//                hadoopUtil.getFileSystem().delete(outputPath,true);
+//                break;
+                continue;
+            }
+            Job job=Job.getInstance(hadoopUtil.getConfiguration());
+            job.setMapperClass(mapperHandle.class);
+            job.setReducerClass(reducerHandle.class);
+            job.setInputFormatClass(ImageFileInputFormat.class);
+            job.setOutputKeyClass(IntWritable.class);
+            job.setOutputValueClass(IntWritable.class);
+
+
+            //mapreduce
+            FileInputFormat.setInputPaths(job,fileStatus.getPath());
+            FileOutputFormat.setOutputPath(job,outputPath);
+            job.waitForCompletion(true);
+            //hbase 插入统计数据
+            //output-data/1/part-r-00000
+            sb.append("/part-r-00000");
+            BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(sb.toString())));
+            String line=null;
+            while((line=bufferedReader.readLine())!=null){
+                String[] strs=line.split("\t");
+                hbaseUtil.insertData("image",name,"statistic",strs[0],strs[1].getBytes());
+            }
+        }
+    }
+
+    @Override
+    public List<ImageModel> getAllImageModel() throws IOException {
+        FileStatus[]fileStatuses=hadoopUtil.getSonPath("output-data/");
+        List<ImageModel>imageModelList=new ArrayList<>();
+        for(FileStatus fileStatus:fileStatuses){
+            String name=fileStatus.getPath().getName();
+            ImageModel imageModel=new ImageModel();
+            imageModel.setName(name);
+            imageModel.setBytecode(hbaseUtil.getData("image",name,"info","bytecode"));
+            int []statistic=new int[256];
+            for(int i=0;i<256;i++){
+                byte[] num=hbaseUtil.getData("image",name,"statistic",String.valueOf(i));
+                if(num!=null)
+                statistic[i]=Integer.valueOf(new String(num));
+            }
+            imageModel.setStatistic(statistic);
+            imageModelList.add(imageModel);
+        }
+        return imageModelList;
+    }
+
+
 }

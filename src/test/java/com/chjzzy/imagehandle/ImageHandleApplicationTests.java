@@ -11,7 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 @SpringBootTest
 class ImageHandleApplicationTests {
@@ -23,16 +25,10 @@ class ImageHandleApplicationTests {
     private HandleService1 handleService1;
 
 
+
     @Test
-    void hadoopTest() throws IOException, BusinessException {
-        ImageModel imageModel =hadoopUtil.getImageModel("image-data/bossbase图片库/1.bmp");
-        int [][]arr=imageModel.getPixels();
-        for(int i=0;i<arr.length;i++){
-            System.out.println();
-            for(int j=0;j<arr[i].length;j++){
-                System.out.print(arr[i][j]+" ");
-            }
-        }
+    void hadoopTest2() throws IOException, BusinessException {
+
     }
     @Test
     void getAllImagePath() throws IOException {
@@ -45,7 +41,12 @@ class ImageHandleApplicationTests {
     void hbaseTest() throws IOException {
 //        hbaseUtil.insertData("image","image111","info","bytecode","hahahaha");
 //        hbaseUtil.insertData("image","image111","statistic","2","100");
-        System.out.println(hbaseUtil.getData("image","image111","info","bytecode"));
+//        System.out.println(new String(hbaseUtil.getData("image","1","statistic","255")));
+//        System.out.println(hbaseUtil.existRowKey("image","image111"));
+//        System.out.println(hbaseUtil.existRowKey("image","image11"));
+//         handleService1.getAllImageModel();
+
+
     }
     @Test
     void mapreduceTest() throws InterruptedException, IOException, ClassNotFoundException {

@@ -7,14 +7,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping(value = "/imagehandle")
 public class IndexController {
     @Autowired
     private HandleService1 handleService1;
     @RequestMapping(value = "/dofirst")
-    public CommonReturnType doFirst(){
-        return CommonReturnType.create(null);
+    public CommonReturnType doFirst() throws IOException, InterruptedException, ClassNotFoundException {
+        handleService1.count();
+        return CommonReturnType.create(handleService1.getAllImageModel());
     }
 
     @RequestMapping(value = "/dosecond")

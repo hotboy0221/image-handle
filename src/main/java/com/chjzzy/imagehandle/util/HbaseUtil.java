@@ -64,21 +64,28 @@ public class HbaseUtil {
         }
     }
 
-    public  void insertData(String tableName,String rowKey,String colFamily,String col,String val) throws IOException {
+    public  void insertData(String tableName,String rowKey,String colFamily,String col,byte[] val) throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
         Put put = new Put(rowKey.getBytes());
-        put.addColumn(colFamily.getBytes(),col.getBytes(), val.getBytes());
+        put.addColumn(colFamily.getBytes(),col.getBytes(), val);
         table.put(put);
         table.close();
     }
 
-    public  String getData(String tableName,String rowKey,String colFamily, String col)throws  IOException{
+    public  byte[] getData(String tableName,String rowKey,String colFamily, String col)throws  IOException{
         Table table = connection.getTable(TableName.valueOf(tableName));
         Get get = new Get(rowKey.getBytes());
         get.addColumn(colFamily.getBytes(),col.getBytes());
-        Result result = table.get(get);
+        byte[] result = table.get(get).getValue(colFamily.getBytes(),col.getBytes());
         table.close();
-        return new String(result.getValue(colFamily.getBytes(),col==null?null:col.getBytes()));
+        return result;
+    }
+    public boolean existRowKey(String tableName,String rowKey) throws IOException {
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        Get get=new Get(rowKey.getBytes());
+        boolean isExist=table.exists(get);
+        table.close();
+        return isExist;
     }
 
 
