@@ -6,10 +6,9 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-
+@Service
 public class HandleServiceImpl4 implements HandleService4 {
     @Autowired
     private HadoopUtil hadoopUtil;

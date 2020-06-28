@@ -10,20 +10,22 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.List;
-
+@Service
 public class HandleServiceImpl2 implements HandleService2 {
     @Autowired
     private HadoopUtil hadoopUtil;
     private Job job;
     private static int arr[]=new int[256];
 
+
     @Override
-    public ImageModel search(int[] arr) {
-        HandleServiceImpl2.arr=arr;
+    public ImageModel search(BufferedImage bufferedImage) {
         return null;
     }
 
