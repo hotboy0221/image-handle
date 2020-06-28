@@ -33,6 +33,7 @@ public class HandleServiceImpl1 implements HandleService1 {
     private HadoopUtil hadoopUtil;
     @Autowired
     private HbaseUtil hbaseUtil;
+    //mapper
     public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{
 
         private IntWritable writeValue=new IntWritable(1);
@@ -60,6 +61,7 @@ public class HandleServiceImpl1 implements HandleService1 {
             hbaseUtil.insertData("image",filename,"info","bytecode",new String(Base64.getEncoder().encode(stream.toByteArray())).getBytes());
         }
     }
+    //reducer
     public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{
         private IntWritable writeValue=new IntWritable();
         public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException,InterruptedException{
