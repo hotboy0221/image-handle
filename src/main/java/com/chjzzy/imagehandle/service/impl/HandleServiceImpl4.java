@@ -14,12 +14,8 @@ public class HandleServiceImpl4 implements HandleService4 {
     @Autowired
     private HadoopUtil hadoopUtil;
     private Job job;
-    @PostConstruct
-    private void init() throws IOException {
-        job=Job.getInstance(hadoopUtil.getConfiguration());
-        job.setMapperClass(HandleServiceImpl1.mapperHandle.class);
-        job.setReducerClass(HandleServiceImpl1.reducerHandle.class);
-    }
+
+
 
 
     public static class mapperHandle extends Mapper<Object,Object,Object,Object> {

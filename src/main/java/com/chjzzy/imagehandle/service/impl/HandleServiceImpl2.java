@@ -4,6 +4,7 @@ import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.service.HandleService2;
 import com.chjzzy.imagehandle.util.HadoopUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -18,16 +19,24 @@ public class HandleServiceImpl2 implements HandleService2 {
     @Autowired
     private HadoopUtil hadoopUtil;
     private Job job;
-    @PostConstruct
-    private void init() throws IOException {
-        job=Job.getInstance(hadoopUtil.getConfiguration());
-        job.setMapperClass(HandleServiceImpl1.mapperHandle.class);
-        job.setReducerClass(HandleServiceImpl1.reducerHandle.class);
+    private static int arr[]=new int[256];
+
+    @Override
+    public ImageModel search(int[] arr) {
+        HandleServiceImpl2.arr=arr;
+        return null;
     }
 
 
     public static class mapperHandle extends Mapper<Object,Object,Object,Object> {
 
+        public void map(Object key, Object value, Context context){
+            //
+            int []arr=HandleServiceImpl2.arr;
+            for(int i=0;i<256;i++){
+//                if(arr[i]==statistic[i]){}
+            }
+        }
     }
     public static class reducerHandle extends Reducer<Object,Object,Object,Object> {
 
