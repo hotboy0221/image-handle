@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
-@CrossOrigin()
+@CrossOrigin
 @RestController
 @RequestMapping(value = "/imagehandle")
 public class IndexController {

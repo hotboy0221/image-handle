@@ -92,18 +92,20 @@ public class HbaseUtil {
         return isExist;
     }
 
+
+
     public List<ImageModel> getAllImageModel(FileStatus [] fileStatuses,int page,int limit) throws IOException {
 
         List<ImageModel>imageModelList=new ArrayList<>();
         int limitMax=page*limit;
-        if(limitMax-limit>fileStatuses.length) return imageModelList;
+        if(limitMax-limit>fileStatuses.length) return imageModelList; //全部图片
         Table table = connection.getTable(TableName.valueOf("image"));
         //遍历文件
         for(int j=limitMax-limit;j< fileStatuses.length&&j<limitMax;j++){
             String name=fileStatuses[j].getPath().getName();
             //查询每一行
-            Get get = new Get(name.getBytes());
-            get.addColumn("info".getBytes(),"bytecode".getBytes());
+            Get get = new Get(name.getBytes()); //get一组数据 访问值为字节 行健
+            get.addColumn("info".getBytes(),"bytecode".getBytes()); //列族 列
             for(int i=0;i<256;i++){
                 get.addColumn("statistic".getBytes(),String.valueOf(i).getBytes());
             }

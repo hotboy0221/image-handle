@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-@ControllerAdvice(basePackages = "chj.idler")
+@ControllerAdvice(basePackages = "com.chizzy.imagehandle")
 public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseBody

@@ -34,11 +34,11 @@ public class HandleServiceImpl1 implements HandleService1 {
     @Autowired
     private HbaseUtil hbaseUtil;
     //mapper
-    public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{
-
+    public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{ //Map输入类型：<Object,BytesWritable>;输出<Int,Int>
+    //图片以字节读取
         private IntWritable writeValue=new IntWritable(1);
         private IntWritable writeKey=new IntWritable();
-        public void map(Object key, BytesWritable value, Context context) throws IOException,InterruptedException{
+        public void map(Object key, BytesWritable value, Context context) throws IOException,InterruptedException{  //key:文件名；value：文件内容
             HbaseUtil hbaseUtil= (HbaseUtil) SpringContextUtil.getBean("hbaseUtil");
             BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
             //获取图片灰度值矩阵
@@ -62,7 +62,7 @@ public class HandleServiceImpl1 implements HandleService1 {
         }
     }
     //reducer
-    public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{
+    public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{//参数意思：比对两个map后的context数据<Int,Int>,<Int,Int>
         private IntWritable writeValue=new IntWritable();
         public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException,InterruptedException{
             int sum = 0;
@@ -94,8 +94,8 @@ public class HandleServiceImpl1 implements HandleService1 {
             Job job=Job.getInstance(hadoopUtil.getConfiguration());
             job.setMapperClass(mapperHandle.class);
             job.setReducerClass(reducerHandle.class);
-            job.setInputFormatClass(ImageFileInputFormat.class);
-            job.setOutputKeyClass(IntWritable.class);
+            job.setInputFormatClass(ImageFileInputFormat.class); //设置输入类型
+            job.setOutputKeyClass(IntWritable.class);  //设置输出类型
             job.setOutputValueClass(IntWritable.class);
 
 
@@ -104,7 +104,7 @@ public class HandleServiceImpl1 implements HandleService1 {
             FileOutputFormat.setOutputPath(job,outputPath);
             job.waitForCompletion(true);
             //hbase 插入统计数据
-            //output-data/1/part-r-00000
+            //输出结果在output-data/图片名/part-r-00000路径下
             sb.append("/part-r-00000");
             BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(sb.toString())));
             String line=null;
