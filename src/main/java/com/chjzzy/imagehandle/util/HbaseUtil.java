@@ -112,7 +112,7 @@ public class HbaseUtil {
             //装填ImageModel
             ImageModel imageModel=new ImageModel();
             imageModel.setName(name);
-            imageModel.setBytecode(result.getValue("info".getBytes(),"bytecode".getBytes()));
+            imageModel.setBytecode(new String(result.getValue("info".getBytes(),"bytecode".getBytes())));
             int []statistic=new int[256];
             for(int i=0;i<256;i++){
                 byte[] num=result.getValue("statistic".getBytes(),String.valueOf(i).getBytes());

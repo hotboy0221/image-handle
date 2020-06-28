@@ -2,7 +2,7 @@ package com.chjzzy.imagehandle.model;
 
 public class ImageModel {
     private String name;
-    private byte[] bytecode;
+    private String bytecode;
     private int[]statistic;
 
     public String getName() {
@@ -13,11 +13,11 @@ public class ImageModel {
         this.name = name;
     }
 
-    public byte[] getBytecode() {
+    public String getBytecode() {
         return bytecode;
     }
 
-    public void setBytecode(byte[] bytecode) {
+    public void setBytecode(String bytecode) {
         this.bytecode = bytecode;
     }
 

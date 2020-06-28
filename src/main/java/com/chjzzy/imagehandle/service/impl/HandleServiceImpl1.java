@@ -56,7 +56,7 @@ public class HandleServiceImpl1 implements HandleService1 {
             String filename=(String)key;
             filename=filename.substring(0,filename.length()-4);
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            ImageIO.write(image, "jpg", stream);
+            ImageIO.write(image, "jpeg", stream);
             hbaseUtil.insertData("image",filename,"info","bytecode",new String(Base64.getEncoder().encode(stream.toByteArray())).getBytes());
         }
     }
@@ -110,7 +110,7 @@ public class HandleServiceImpl1 implements HandleService1 {
                 String[] strs=line.split("\t");
                 hbaseUtil.insertData("image",name,"statistic",strs[0],strs[1].getBytes());
             }
-            break;
+
         }
     }
 
