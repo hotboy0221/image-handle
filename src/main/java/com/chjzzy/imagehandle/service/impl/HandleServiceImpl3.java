@@ -82,7 +82,6 @@ public class HandleServiceImpl3 implements HandleService3 {
                 bufferedWriter.write(splitArr.toString());
             }
             bufferedWriter.close();
-            break;
         }
     }
 
@@ -102,17 +101,16 @@ public class HandleServiceImpl3 implements HandleService3 {
             hadoopUtil.getFileSystem().delete(outputPath,true);
         }
         FileStatus[]fileStatusList=hadoopUtil.getSonPath("split-data");
+        Job job = Job.getInstance(hadoopUtil.getConfiguration());
+        job.setMapperClass(HandleServiceImpl3.mapperHandle.class);
+        job.setReducerClass(HandleServiceImpl3.reducerHandle.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        FileOutputFormat.setOutputPath(job,outputPath);
         for(FileStatus fileStatus:fileStatusList) {
-            Job job = Job.getInstance(hadoopUtil.getConfiguration());
-            job.setMapperClass(HandleServiceImpl3.mapperHandle.class);
-            job.setReducerClass(HandleServiceImpl3.reducerHandle.class);
-            job.setOutputKeyClass(Text.class);
-            job.setOutputValueClass(Text.class);
-
-            FileInputFormat.setInputPaths(job,fileStatus.getPath());
-            FileOutputFormat.setOutputPath(job,outputPath);
-            job.waitForCompletion(true);
+            FileInputFormat.addInputPath(job,fileStatus.getPath());
         }
+        job.waitForCompletion(true);
         List<ImageModel>imageModelList=hbaseUtil.getImageModelListByRowKey(fileNameList,false);
         fileNameList.clear();
         return imageModelList;

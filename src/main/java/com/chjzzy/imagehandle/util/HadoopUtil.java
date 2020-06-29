@@ -21,7 +21,6 @@ import java.io.InputStream;
 public class HadoopUtil {
     @Value("${hdfs.path}")
     private String path;
-    @Value("${hdfs.username}")
     private Configuration configuration;
     private FileSystem fileSystem;
     @PostConstruct
