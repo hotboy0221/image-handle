@@ -3,6 +3,7 @@ package com.chjzzy.imagehandle.service.impl;
 import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.service.HandleService3;
 import com.chjzzy.imagehandle.util.HadoopUtil;
+import com.chjzzy.imagehandle.util.HbaseUtil;
 import com.chjzzy.imagehandle.util.ImageFileInputFormat;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
@@ -22,14 +23,20 @@ import org.springframework.stereotype.Service;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.LinkedList;
+import java.util.List;
 
 @Service
 public class HandleServiceImpl3 implements HandleService3 {
     @Autowired
     private HadoopUtil hadoopUtil;
+    @Autowired
+    private HbaseUtil hbaseUtil;
     private Job job;
-    public static int [][]arr;
-
+    //存储搜索图片的数据
+    public static int [][]searchArray;
+    //存储搜索结果
+    public static List<String> fileNameList=new LinkedList<>();
     @Override
     public void split() throws IOException {
         FileStatus[]fileStatusList=hadoopUtil.getSonPath("image-data/bossbase图片库");
@@ -80,16 +87,16 @@ public class HandleServiceImpl3 implements HandleService3 {
     }
 
     @Override
-    public synchronized ImageModel partSearch(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
-//        int [][]arr=new int[bufferedImage.getHeight()][bufferedImage.getWidth()];
-//        for(int i=0;i<bufferedImage.getHeight();i++){
-//            for(int j=0;j<bufferedImage.getWidth();j++){
-//                int rgb=bufferedImage.getRGB(i, j);
-//                //计算灰度值
-//                arr[i][j]=(int) ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3;
-//            }
-//        }
-//        HandleServiceImpl3.arr=arr;
+    public synchronized List<ImageModel> partSearch(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+        int [][]arr=new int[bufferedImage.getHeight()][bufferedImage.getWidth()];
+        for(int i=0;i<bufferedImage.getHeight();i++){
+            for(int j=0;j<bufferedImage.getWidth();j++){
+                int rgb=bufferedImage.getRGB(i, j);
+                //计算灰度值
+                arr[i][j]=(int) ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3;
+            }
+        }
+        searchArray=arr;
         Path outputPath=new Path("question3");
         if(hadoopUtil.getFileSystem().exists(outputPath)){
             hadoopUtil.getFileSystem().delete(outputPath,true);
@@ -105,46 +112,48 @@ public class HandleServiceImpl3 implements HandleService3 {
             FileInputFormat.setInputPaths(job,fileStatus.getPath());
             FileOutputFormat.setOutputPath(job,outputPath);
             job.waitForCompletion(true);
-            break;
         }
-        return null;
+        List<ImageModel>imageModelList=hbaseUtil.getImageModelListByRowKey(fileNameList,false);
+        fileNameList.clear();
+        return imageModelList;
     }
 
-    //
+
     public static class mapperHandle extends Mapper<LongWritable, Text,Text,Text> {
-        public void map(LongWritable key, Text value, Context context) throws IOException {
-//            String filename=(String)key;
-//            filename=filename.substring(0,filename.length()-4);
-//            BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
-//            for(int i=0;i<image.getHeight();i++) {
-//                for (int j = 0; j < image.getWidth(); j++) {
-//
-//                }
-//            }
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            //获取256*256的部分图来验证
             String inputFileName=((FileSplit)context.getInputSplit()).getPath().getName();
             String[] partArrays=value.toString().split("\t");
-            int [][]validateArr=new int[partArrays.length][];
+            int [][]validateArray=new int[partArrays.length][];
             for(int i=0; i<partArrays.length;i++){
                 String[]x=partArrays[i].split(" ");
-                validateArr[i]=new int[x.length];
+                validateArray[i]=new int[x.length];
                 for(int j=0;j<x.length;j++){
-                    validateArr[i][j]=Integer.valueOf(x[j]);
+                    validateArray[i][j]=Integer.valueOf(x[j]);
                 }
             }
-            for(int i=0;i<validateArr.length;i++){
-                for(int j=0;j<validateArr[0].length;j++){
-                    System.out.print( validateArr[i][j]+" ");
+            int matchI=validateArray.length-searchArray.length;
+            int matchJ=validateArray[0].length-searchArray[0].length;
+            for(int i=0;i<=matchI;i++){
+                for(int j=0;j<matchJ;j++){
+                    if(match(validateArray,searchArray,i,j)){
+                        context.write(new Text(inputFileName),new Text(""));
+                    }
                 }
-                System.out.println();
             }
-
-            System.out.println("------");
         }
-
+        private  boolean match(int[][] validateArr,int [][]searchArr,int offsetI,int offsetJ){
+            for(int i=0;i<searchArr.length;i++){
+                for(int j=0;j<searchArr.length;j++){
+                    if(searchArr[i][j]!=validateArr[i+offsetI][j+offsetJ])return false;
+                }
+            }
+            return true;
+        }
     }
     public static class reducerHandle extends Reducer<Text,Text,Text,Text> {
-        public void reduce(Text key, Iterable<Text> values, Context context){
-
+        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            fileNameList.add(key.toString());
         }
     }
 

@@ -91,14 +91,51 @@ public class HbaseUtil {
         table.close();
         return isExist;
     }
+    //按行键查询
+    public List<ImageModel>getImageModelListByRowKey(List<String>rowKeyList,boolean needStas) throws IOException {
+        List<ImageModel>imageModelList=new ArrayList<>();
+        Table table = connection.getTable(TableName.valueOf("image"));
+        //遍历文件
+        for(String rowKey:rowKeyList){
+            //查询每一行
+            Get get = new Get(rowKey.getBytes()); //get一组数据 访问值为字节 行健
+            get.addColumn("info".getBytes(),"bytecode".getBytes());
+            int []statistic=null;
+            if(needStas){
+                for(int i=0;i<256;i++){
+                    get.addColumn("statistic".getBytes(),String.valueOf(i).getBytes());
+                }
+                statistic=new int[256];
+            }
+            Result result=table.get(get);
+            if(result==null)continue;
+            //装填ImageModel
+            ImageModel imageModel=new ImageModel();
+            imageModel.setName(rowKey);
+            imageModel.setBytecode(new String(result.getValue("info".getBytes(),"bytecode".getBytes())));
+            if(needStas){
+                for(int i=0;i<256;i++){
+                    byte[] num=result.getValue("statistic".getBytes(),String.valueOf(i).getBytes());
+                    if(num!=null)
+                        statistic[i]=Integer.valueOf(new String(num));
+                }
+                imageModel.setStatistic(statistic);
+            }
+            imageModelList.add(imageModel);
+        }
 
 
+        table.close();
+        return imageModelList;
+    }
 
+
+    //分页查询
     public List<ImageModel> getAllImageModel(FileStatus [] fileStatuses,int page,int limit) throws IOException {
 
         List<ImageModel>imageModelList=new ArrayList<>();
         int limitMax=page*limit;
-        if(limitMax-limit>fileStatuses.length) return imageModelList; //全部图片
+        if(limitMax-limit>fileStatuses.length) return imageModelList; //超出文件数目就返回
         Table table = connection.getTable(TableName.valueOf("image"));
         //遍历文件
         for(int j=limitMax-limit;j< fileStatuses.length&&j<limitMax;j++){
