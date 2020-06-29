@@ -18,14 +18,11 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class HandleServiceImpl1 implements HandleService1 {
@@ -98,7 +95,6 @@ public class HandleServiceImpl1 implements HandleService1 {
             job.setInputFormatClass(ImageFileInputFormat.class); //设置输入类型
             job.setOutputKeyClass(IntWritable.class);  //设置输出类型
             job.setOutputValueClass(IntWritable.class);
-
 
             //mapreduce
             FileInputFormat.setInputPaths(job,fileStatus.getPath());

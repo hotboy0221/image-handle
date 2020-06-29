@@ -38,7 +38,7 @@ public class IndexController {
     }
 
     @RequestMapping(value = "/dothird")
-    public CommonReturnType doThird(@RequestParam(name="image")MultipartFile image) throws IOException {
+    public CommonReturnType doThird(@RequestParam(name="image")MultipartFile image) throws IOException, InterruptedException, ClassNotFoundException {
 
         return CommonReturnType.create(handleService3.partSearch(ImageIO.read(image.getInputStream())));
     }

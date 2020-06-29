@@ -8,15 +8,17 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -43,78 +45,107 @@ public class HandleServiceImpl3 implements HandleService3 {
                 continue;
             }
             //读取图片
-            BufferedImage bufferedImage=ImageIO.read(new InputStreamReader(hadoopUtil.getFile(fileStatus.getPath())));
-            //
-            BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(hadoopUtil.getFileSystem().create(new Path(sb.toString()))));
-            int ki=bufferedReader,kj=256;
-            while(ki+kj<1024)
-            {
-                int splitArr=
-                for(int i=ki-256;i<ki;i++){
-                    for(int j=kj-256;j<kj;j++){
+            BufferedImage bufferedImage=ImageIO.read(hadoopUtil.getFile(fileStatus.getPath()));
 
+            BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(hadoopUtil.getFileSystem().create(new Path(sb.toString()))));
+            //将图片分成4个矩阵
+            int li=bufferedImage.getHeight()/2,lj=bufferedImage.getWidth()/2;
+            int ki=0,kj=0;
+            while(ki+kj<3)
+            {
+                StringBuilder splitArr=new StringBuilder();
+                int offsetI=ki*li;
+                int offsetJ=kj*lj;
+                for(int i=0;i<li;i++){
+                    for(int j=0;j<lj;j++){
+                        int rgb=bufferedImage.getRGB(i+offsetI, j+offsetJ);
+                        //计算灰度值
+                        splitArr.append(((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3);
+                        splitArr.append(" ");
                     }
+                    splitArr.append("\t");
                 }
                 if(ki<=kj){
-                    ki+=256;
+                    ki++;
                 }else{
-                    kj+=256;
-                    ki-=256;
+                    kj++;
+                    ki--;
                 }
+                splitArr.append("\n");
+                bufferedWriter.write(splitArr.toString());
             }
-            //            bufferedWriter.write();
-            bufferedReader.close();
             bufferedWriter.close();
-
-
+            break;
         }
     }
 
     @Override
-    public synchronized ImageModel partSearch(BufferedImage bufferedImage) throws IOException {
-        int [][]arr=new int[bufferedImage.getHeight()][bufferedImage.getWidth()];
-        for(int i=0;i<bufferedImage.getHeight();i++){
-            for(int j=0;j<bufferedImage.getWidth();j++){
-                int rgb=bufferedImage.getRGB(i, j);
-                //计算灰度值
-                arr[i][j]=(int) ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3;
-            }
+    public synchronized ImageModel partSearch(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+//        int [][]arr=new int[bufferedImage.getHeight()][bufferedImage.getWidth()];
+//        for(int i=0;i<bufferedImage.getHeight();i++){
+//            for(int j=0;j<bufferedImage.getWidth();j++){
+//                int rgb=bufferedImage.getRGB(i, j);
+//                //计算灰度值
+//                arr[i][j]=(int) ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3;
+//            }
+//        }
+//        HandleServiceImpl3.arr=arr;
+        Path outputPath=new Path("question3");
+        if(hadoopUtil.getFileSystem().exists(outputPath)){
+            hadoopUtil.getFileSystem().delete(outputPath,true);
         }
-        HandleServiceImpl3.arr=arr;
-        Job job=Job.getInstance(hadoopUtil.getConfiguration());
-        job.setMapperClass(HandleServiceImpl1.mapperHandle.class);
-        job.setReducerClass(HandleServiceImpl1.reducerHandle.class);
-        job.setInputFormatClass(ImageFileInputFormat.class);
-        job.setOutputKeyClass(IntWritable.class);
-        job.setOutputValueClass(IntWritable.class);
+        FileStatus[]fileStatusList=hadoopUtil.getSonPath("split-data");
+        for(FileStatus fileStatus:fileStatusList) {
+            Job job = Job.getInstance(hadoopUtil.getConfiguration());
+            job.setMapperClass(HandleServiceImpl3.mapperHandle.class);
+            job.setReducerClass(HandleServiceImpl3.reducerHandle.class);
+            job.setOutputKeyClass(Text.class);
+            job.setOutputValueClass(Text.class);
 
-
+            FileInputFormat.setInputPaths(job,fileStatus.getPath());
+            FileOutputFormat.setOutputPath(job,outputPath);
+            job.waitForCompletion(true);
+            break;
+        }
         return null;
     }
 
-    //读入图片，输出小矩阵
-    public static class mapperHandle1 extends Mapper<Object,BytesWritable,Object,Object> {
-        public void map(Object key, BytesWritable value, Context context) throws IOException {
-            String filename=(String)key;
-            filename=filename.substring(0,filename.length()-4);
-            BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
-            for(int i=0;i<image.getHeight();i++) {
-                for (int j = 0; j < image.getWidth(); j++) {
-
+    //
+    public static class mapperHandle extends Mapper<LongWritable, Text,Text,Text> {
+        public void map(LongWritable key, Text value, Context context) throws IOException {
+//            String filename=(String)key;
+//            filename=filename.substring(0,filename.length()-4);
+//            BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
+//            for(int i=0;i<image.getHeight();i++) {
+//                for (int j = 0; j < image.getWidth(); j++) {
+//
+//                }
+//            }
+            String inputFileName=((FileSplit)context.getInputSplit()).getPath().getName();
+            String[] partArrays=value.toString().split("\t");
+            int [][]validateArr=new int[partArrays.length][];
+            for(int i=0; i<partArrays.length;i++){
+                String[]x=partArrays[i].split(" ");
+                validateArr[i]=new int[x.length];
+                for(int j=0;j<x.length;j++){
+                    validateArr[i][j]=Integer.valueOf(x[j]);
                 }
             }
+            for(int i=0;i<validateArr.length;i++){
+                for(int j=0;j<validateArr[0].length;j++){
+                    System.out.print( validateArr[i][j]+" ");
+                }
+                System.out.println();
+            }
 
+            System.out.println("------");
         }
 
     }
-    public static class reducerHandle1 extends Reducer<Object,Object,Object,Object> {
+    public static class reducerHandle extends Reducer<Text,Text,Text,Text> {
+        public void reduce(Text key, Iterable<Text> values, Context context){
 
+        }
     }
-    //输入小矩阵，输出图片名
-    public static class mapperHandle2 extends Mapper<Object,Object,Object,Object> {
 
-    }
-    public static class reducerHandle2 extends Reducer<Object,Object,Object,Object> {
-
-    }
 }

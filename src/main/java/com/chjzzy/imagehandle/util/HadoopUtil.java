@@ -22,7 +22,6 @@ public class HadoopUtil {
     @Value("${hdfs.path}")
     private String path;
     @Value("${hdfs.username}")
-    private String username;
     private Configuration configuration;
     private FileSystem fileSystem;
     @PostConstruct

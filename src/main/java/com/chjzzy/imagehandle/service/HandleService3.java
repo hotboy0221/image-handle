@@ -8,5 +8,5 @@ import java.io.IOException;
 public interface HandleService3 {
     //分割512*512成256*256
     void split() throws IOException;
-    ImageModel partSearch(BufferedImage bufferedImage) throws IOException;
+    ImageModel partSearch(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException;
 }
