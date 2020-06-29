@@ -59,6 +59,7 @@ public class HandleServiceImpl1 implements HandleService1 {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             ImageIO.write(image, "jpeg", stream);
             hbaseUtil.insertData("image",filename,"info","bytecode",new String(Base64.getEncoder().encode(stream.toByteArray())).getBytes());
+            stream.close();
         }
     }
     //reducer

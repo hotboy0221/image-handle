@@ -43,9 +43,26 @@ public class HandleServiceImpl3 implements HandleService3 {
                 continue;
             }
             //读取图片
-            BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(fileStatus.getPath())));
+            BufferedImage bufferedImage=ImageIO.read(new InputStreamReader(hadoopUtil.getFile(fileStatus.getPath())));
             //
             BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(hadoopUtil.getFileSystem().create(new Path(sb.toString()))));
+            int ki=bufferedReader,kj=256;
+            while(ki+kj<1024)
+            {
+                int splitArr=
+                for(int i=ki-256;i<ki;i++){
+                    for(int j=kj-256;j<kj;j++){
+
+                    }
+                }
+                if(ki<=kj){
+                    ki+=256;
+                }else{
+                    kj+=256;
+                    ki-=256;
+                }
+            }
+            //            bufferedWriter.write();
             bufferedReader.close();
             bufferedWriter.close();
 
