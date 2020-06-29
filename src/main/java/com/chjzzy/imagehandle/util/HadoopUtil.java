@@ -57,8 +57,8 @@ public class HadoopUtil {
         FileStatus[] fileStatusList=fileSystem.listStatus(new Path(dirPath));
         return fileStatusList;
     }
-    public FSDataInputStream getFile(String path) throws IOException {
-        return fileSystem.open(new Path(path));
+    public FSDataInputStream getFile(Path path) throws IOException {
+        return fileSystem.open(path);
     }
     public Configuration getConfiguration() {
         return configuration;

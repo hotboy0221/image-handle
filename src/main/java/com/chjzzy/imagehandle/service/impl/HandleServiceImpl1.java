@@ -106,7 +106,7 @@ public class HandleServiceImpl1 implements HandleService1 {
             //hbase 插入统计数据
             //output-data/1/part-r-00000
             sb.append("/part-r-00000");
-            BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(sb.toString())));
+            BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(new Path(sb.toString()))));
             String line=null;
             while((line=bufferedReader.readLine())!=null){
                 String[] strs=line.split("\t");
