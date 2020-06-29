@@ -13,7 +13,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
-@CrossOrigin()
+@CrossOrigin
 @RestController
 @RequestMapping(value = "/imagehandle")
 public class IndexController {
