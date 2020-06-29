@@ -32,7 +32,6 @@ public class HandleServiceImpl3 implements HandleService3 {
     private HadoopUtil hadoopUtil;
     @Autowired
     private HbaseUtil hbaseUtil;
-    private Job job;
     //存储搜索图片的数据
     public static int [][]searchArray;
     //存储搜索结果
