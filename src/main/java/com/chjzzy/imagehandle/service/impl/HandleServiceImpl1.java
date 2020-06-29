@@ -112,7 +112,7 @@ public class HandleServiceImpl1 implements HandleService1 {
                 String[] strs=line.split("\t");
                 hbaseUtil.insertData("image",name,"statistic",strs[0],strs[1].getBytes());
             }
-
+            bufferedReader.close();
         }
     }
 

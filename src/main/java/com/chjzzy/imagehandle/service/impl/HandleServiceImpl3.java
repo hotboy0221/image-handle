@@ -19,10 +19,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 
 @Service
 public class HandleServiceImpl3 implements HandleService3 {
@@ -45,13 +42,13 @@ public class HandleServiceImpl3 implements HandleService3 {
                 System.out.println(sb.toString());
                 continue;
             }
-
+            //读取图片
             BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(fileStatus.getPath())));
-            String line=null;
-            while((line=bufferedReader.readLine())!=null){
-                String[] strs=line.split("\t");
-                hbaseUtil.insertData("image",name,"statistic",strs[0],strs[1].getBytes());
-            }
+            //
+            BufferedWriter bufferedWriter=new BufferedWriter(new OutputStreamWriter(hadoopUtil.getFileSystem().create(new Path(sb.toString()))));
+            bufferedReader.close();
+            bufferedWriter.close();
+
 
         }
     }
