@@ -64,7 +64,7 @@ public class HandleServiceImpl4 implements HandleService4 {
         }
         job.waitForCompletion(true);
         //read result
-        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(outputPath)));
+        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(new Path("question4/part-r-00000"))));
         String line=null;
         String pointStr=null;
         int max=Integer.MAX_VALUE;
@@ -186,6 +186,8 @@ public class HandleServiceImpl4 implements HandleService4 {
                     value=text;
                 }
             }
+
+            System.out.println(key.toString()+" "+value.toString());
             context.write(key,value);
         }
     }

@@ -7,7 +7,6 @@ import com.chjzzy.imagehandle.util.HbaseUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -34,11 +33,12 @@ public class HandleServiceImpl2 implements HandleService2 {
     @Autowired
     private HadoopUtil hadoopUtil;
 
-    private static int searchArray[]=new int[256];
+    private static int []searchArray;
 
 
     @Override
     public ImageModel search(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+        searchArray=new int[256];
         for(int i=0;i<bufferedImage.getHeight();i++){
             for(int j=0;j<bufferedImage.getWidth();j++){
                 int rgb=bufferedImage.getRGB(i, j);
@@ -49,6 +49,8 @@ public class HandleServiceImpl2 implements HandleService2 {
         Job job=Job.getInstance(hadoopUtil.getConfiguration());
         job.setMapperClass(mapperHandle.class);
         job.setReducerClass(reducerHandle.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
         Scan scan=new Scan();
         scan.setCaching(1000);
         scan.setCacheBlocks(false);
@@ -57,7 +59,7 @@ public class HandleServiceImpl2 implements HandleService2 {
                 scan, // Scan instance to control CF and attribute selection
                 mapperHandle.class, // mapper class
                 Text.class, // mapper output key
-                Put.class, // mapper output value
+                Text.class, // mapper output value
                 job);
         Path outputPath=new Path("question2");
         if(hadoopUtil.getFileSystem().exists(outputPath)){
@@ -65,7 +67,7 @@ public class HandleServiceImpl2 implements HandleService2 {
         }
         FileOutputFormat.setOutputPath(job,outputPath);
         job.waitForCompletion(true);
-        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(outputPath)));
+        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(hadoopUtil.getFile(new Path("question2/part-r-00000"))));
         String line=bufferedReader.readLine();
         if(line==null)return null;
         String []strs=line.split("\t");
@@ -84,9 +86,9 @@ public class HandleServiceImpl2 implements HandleService2 {
             String bytecode=null;
             String filename=null;
             for(Cell cell:value.rawCells()){
-                if("statistic".equals(CellUtil.cloneFamily(cell))){
+                if("statistic".equals(Bytes.toString(CellUtil.cloneFamily(cell)))){
                     arr[Integer.parseInt(Bytes.toString(CellUtil.cloneQualifier(cell)))]= Integer.parseInt(Bytes.toString(CellUtil.cloneValue(cell)));
-                }else if("bytecode".equals(CellUtil.cloneQualifier(cell))){
+                }else if("bytecode".equals(Bytes.toString(CellUtil.cloneQualifier(cell)))){
                     bytecode=Bytes.toString(CellUtil.cloneValue(cell));
                     filename=Bytes.toString(CellUtil.cloneRow(cell));
                 }
