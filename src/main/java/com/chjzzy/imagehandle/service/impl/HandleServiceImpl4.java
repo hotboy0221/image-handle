@@ -1,7 +1,6 @@
 package com.chjzzy.imagehandle.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
-import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.service.HandleService4;
 import com.chjzzy.imagehandle.util.HadoopUtil;
 import com.chjzzy.imagehandle.util.HbaseUtil;
@@ -15,7 +14,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @Service
@@ -34,11 +33,12 @@ public class HandleServiceImpl4 implements HandleService4 {
     private HbaseUtil hbaseUtil;
     //存储搜索图片的数据
     public static int [][]searchArray;
-    //存储搜索结果
-    private static JSONObject result=new JSONObject();
+
 
     @Override
     public synchronized JSONObject alterSearch(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+        //存储搜索结果
+        JSONObject result=new JSONObject();
         int [][]arr=new int[bufferedImage.getHeight()][bufferedImage.getWidth()];
         for(int i=0;i<bufferedImage.getHeight();i++){
             for(int j=0;j<bufferedImage.getWidth();j++){
@@ -63,47 +63,62 @@ public class HandleServiceImpl4 implements HandleService4 {
             FileInputFormat.addInputPath(job,fileStatus.getPath());
         }
         job.waitForCompletion(true);
-       ;
-        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(new Path("question4"))));
-        String[] strs=bufferedReader.readLine().split("\t");
-        result.put("name", strs[0]);
-        result.put("bytecode",hbaseUtil.getData("image",(String)result.get("name"),"info","bytecode"));
-        List<Point>pointList=new ArrayList<>();
+        //read result
+        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(outputPath)));
+        String line=null;
+        String pointStr=null;
+        int max=Integer.MAX_VALUE;
+        while((line=bufferedReader.readLine())!=null){
+            String[] strs=bufferedReader.readLine().split("\t");
+            int k=Integer.valueOf(strs[1]);
+            if(k<max){
+                result.put("name",strs[0]);
+                max=k;
+                pointStr=strs[1];
+            }
+        }
 
+        result.put("bytecode",hbaseUtil.getData("image",(String)result.get("name"),"info","bytecode"));
+
+        String []point=pointStr.split("-");
+        List<Point>pointList=new LinkedList<>();
+        for(int i=0;i+1<point.length;i+=2){
+            pointList.add(new Point(Integer.valueOf(point[i]),Integer.valueOf(point[i+1])));
+        }
         result.put("alterPoints",pointList);
-        result.clear();
+        bufferedReader.close();
         return result;
     }
     public static class Point{
-        private int x;
-        private int y;
+        private int row;//row_index
+        private int col;//col_index
 
-        public Point(int x, int y) {
-            this.x = x;
-            this.y = y;
+        public Point(int row, int col) {
+            this.row = row;
+            this.col = col;
         }
 
-        public int getX() {
-            return x;
+        public int getRow() {
+            return row;
         }
 
-        public void setX(int x) {
-            this.x = x;
+        public void setRow(int row) {
+            this.row = row;
         }
 
-        public int getY() {
-            return y;
+        public int getCol() {
+            return col;
         }
 
-        public void setY(int y) {
-            this.y = y;
+        public void setCol(int col) {
+            this.col = col;
         }
     }
     public static class mapperHandle extends Mapper<LongWritable, Text,Text,Text> {
-        int sum=Integer.MAX_VALUE;
-        StringBuilder index=null;
-        String fileName=null;
+
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            int sum=Integer.MAX_VALUE;
+            List<Point>alterPoints=null;
             //获取256*256的部分图来验证
             String inputFileName=((FileSplit)context.getInputSplit()).getPath().getName();
             String[] partArrays=value.toString().split("\t");
@@ -120,50 +135,58 @@ public class HandleServiceImpl4 implements HandleService4 {
 
             for(int i=0;i<=matchI;i++){
                 for(int j=0;j<matchJ;j++){
-                    int k= notMatch(validateArray,searchArray,i,j,sum);
-                    if(sum>k){
-                         sum=k;
-                         index=new StringBuilder();
-                         index.append(sum);
-                         index.append("\t");
-                         index.append(i);
-                         index.append("\t");
-                         index.append(j);
-                         fileName=inputFileName;
+                    List<Point> pointList= notMatch(validateArray,searchArray,i,j,sum);
+                    if(pointList!=null&&sum>pointList.size()){
+                         sum=pointList.size();
+                         alterPoints=pointList;
                     }
                 }
             }
-            context.write(new Text(inputFileName),new Text(index.toString()));
-          
-        }
-        @Override
-        protected void cleanup(Mapper<LongWritable,Text,Text, Text>.Context context)
-                throws IOException, InterruptedException {
-            context.write(new Text(fileName), new Text(index.toString()));
+            context.write(new Text(inputFileName),new Text(convertToString(alterPoints)));
         }
 
 
         //查找不匹配的点
-        private  int  notMatch(int[][] validateArr,int [][]searchArr,int offsetI,int offsetJ,int max){
-            int sum=0;
+        private  List<Point>  notMatch(int[][] validateArr,int [][]searchArr,int offsetI,int offsetJ,int max){
+            List<Point> pointList=new LinkedList<>();
             for(int i=0;i<searchArr.length;i++){
                 for(int j=0;j<searchArr.length;j++){
                     if(searchArr[i][j]!=validateArr[i+offsetI][j+offsetJ]){
-                        sum++;
-                        if(sum>=max){
-                            return Integer.MAX_VALUE;
+                        pointList.add(new Point(i,j));
+                        if(pointList.size()>=max){
+                            return null;
                         }
                     }
                 }
             }
-            return sum;
+            return pointList;
         }
+        private String convertToString(List<Point> points){
+            StringBuilder sb=new StringBuilder();
+            sb.append(points.size());
+            sb.append("\t");
+            for(Point point:points){
+                sb.append(point.getRow());
+                sb.append("-");
+                sb.append(point.getCol());
+                sb.append("-");
+            }
+            return sb.toString();
+        }
+
     }
     public static class reducerHandle extends Reducer<Text,Text,Text,Text> {
         public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            Text value=null;
+            int max=Integer.MAX_VALUE;
             for(Text text:values){
-                context.write(key,text);
+                int k=Integer.valueOf(text.toString().split("\t")[0]);
+                if(k<max){
+                    max=k;
+                    value=text;
+                }
             }
+            context.write(key,value);
         }
     }
 }

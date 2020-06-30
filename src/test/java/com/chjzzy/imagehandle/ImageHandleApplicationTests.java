@@ -54,8 +54,10 @@ class ImageHandleApplicationTests {
 //        System.out.println(hbaseUtil.existRowKey("image","image111"));
 //        System.out.println(hbaseUtil.existRowKey("image","image11"));
 //         handleService1.getAllImageModel();
-        handleService3.partSearch(null);
+//        handleService3.partSearch(null);
+        handleService2.search(null);
     }
+
     @Test
     void mapreduceTest() throws InterruptedException, IOException, ClassNotFoundException {
         handleService1.count();

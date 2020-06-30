@@ -167,4 +167,8 @@ public class HbaseUtil {
         return imageModelList;
     }
 
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
 }

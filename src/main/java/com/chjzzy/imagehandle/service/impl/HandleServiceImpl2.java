@@ -3,44 +3,105 @@ package com.chjzzy.imagehandle.service.impl;
 import com.chjzzy.imagehandle.model.ImageModel;
 import com.chjzzy.imagehandle.service.HandleService2;
 import com.chjzzy.imagehandle.util.HadoopUtil;
+import com.chjzzy.imagehandle.util.HbaseUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
+import org.apache.hadoop.hbase.mapreduce.TableMapper;
+import org.apache.hadoop.hbase.mapreduce.TableReducer;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.List;
+import java.io.InputStreamReader;
+
 @Service
 public class HandleServiceImpl2 implements HandleService2 {
     @Autowired
     private HadoopUtil hadoopUtil;
-    private Job job;
-    private static int arr[]=new int[256];
+
+    private static int searchArray[]=new int[256];
 
 
     @Override
-    public ImageModel search(BufferedImage bufferedImage) {
-        return null;
-    }
-
-
-    public static class mapperHandle extends Mapper<Object,Object,Object,Object> {
-
-        public void map(Object key, Object value, Context context){
-            //
-            int []arr=HandleServiceImpl2.arr;
-            for(int i=0;i<256;i++){
-//                if(arr[i]==statistic[i]){}
+    public ImageModel search(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+        for(int i=0;i<bufferedImage.getHeight();i++){
+            for(int j=0;j<bufferedImage.getWidth();j++){
+                int rgb=bufferedImage.getRGB(i, j);
+                //计算直方图
+                searchArray[ ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3]++;
             }
         }
-    }
-    public static class reducerHandle extends Reducer<Object,Object,Object,Object> {
+        Job job=Job.getInstance(hadoopUtil.getConfiguration());
+        job.setMapperClass(mapperHandle.class);
+        job.setReducerClass(reducerHandle.class);
+        Scan scan=new Scan();
+        scan.setCaching(1000);
+        scan.setCacheBlocks(false);
+        TableMapReduceUtil.initTableMapperJob(
+                "image", // input // table
+                scan, // Scan instance to control CF and attribute selection
+                mapperHandle.class, // mapper class
+                Text.class, // mapper output key
+                Put.class, // mapper output value
+                job);
+        Path outputPath=new Path("question2");
+        if(hadoopUtil.getFileSystem().exists(outputPath)){
+            hadoopUtil.getFileSystem().delete(outputPath,true);
+        }
+        FileOutputFormat.setOutputPath(job,outputPath);
+        job.waitForCompletion(true);
+        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(outputPath)));
+        String line=bufferedReader.readLine();
+        if(line==null)return null;
+        String []strs=line.split("\t");
+        ImageModel imageModel=new ImageModel();
+        imageModel.setName(strs[0]);
+        imageModel.setBytecode(strs[1]);
+        bufferedReader.close();
 
+        return imageModel;
+    }
+
+
+    public static class mapperHandle extends TableMapper<Text, Text> {
+        public void map(ImmutableBytesWritable key, Result value, Context context) throws IOException, InterruptedException {
+            int []arr=new int[256];
+            String bytecode=null;
+            String filename=null;
+            for(Cell cell:value.rawCells()){
+                if("statistic".equals(CellUtil.cloneFamily(cell))){
+                    arr[Integer.parseInt(Bytes.toString(CellUtil.cloneQualifier(cell)))]= Integer.parseInt(Bytes.toString(CellUtil.cloneValue(cell)));
+                }else if("bytecode".equals(CellUtil.cloneQualifier(cell))){
+                    bytecode=Bytes.toString(CellUtil.cloneValue(cell));
+                    filename=Bytes.toString(CellUtil.cloneRow(cell));
+                }
+            }
+            for(int i=0;i<arr.length;i++){
+                if(arr[i]!=searchArray[i])return;
+            }
+            context.write(new Text(filename),new Text(bytecode));
+        }
+    }
+    public static class reducerHandle extends Reducer<Text,Text,Text,Text> {
+        public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            for (Text value:values){
+                context.write(key,value);
+            }
+        }
     }
 }
