@@ -45,7 +45,6 @@ public class IndexController {
 
     @RequestMapping(value = "/doforth")
     public CommonReturnType doForth(@RequestParam(name="image")MultipartFile image) throws IOException, InterruptedException, ClassNotFoundException {
-        handleService3.split();
         return CommonReturnType.create(handleService4.alterSearch(ImageIO.read(image.getInputStream())));
     }
 }

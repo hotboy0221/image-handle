@@ -31,7 +31,7 @@ public class HandleServiceImpl1 implements HandleService1 {
     @Autowired
     private HbaseUtil hbaseUtil;
     //mapper
-    public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{ //Map输入类型：<Object,BytesWritable>;输出<Int,Int>
+    public static class mapperHandle extends Mapper<Object, BytesWritable, IntWritable,IntWritable>{
     //图片以字节读取
         private IntWritable writeValue=new IntWritable(1);
         private IntWritable writeKey=new IntWritable();
@@ -60,7 +60,7 @@ public class HandleServiceImpl1 implements HandleService1 {
         }
     }
     //reducer
-    public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{//参数意思：比对两个map后的context数据<Int,Int>,<Int,Int>
+    public static class reducerHandle extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable>{
         private IntWritable writeValue=new IntWritable();
         public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException,InterruptedException{
             int sum = 0;
@@ -85,8 +85,6 @@ public class HandleServiceImpl1 implements HandleService1 {
             if(hadoopUtil.getFileSystem().exists(outputPath)){
                 sb.append(" already exists");
                 System.out.println(sb.toString());
-//                hadoopUtil.getFileSystem().delete(outputPath,true);
-//                break;
                 continue;
             }
             Job job=Job.getInstance(hadoopUtil.getConfiguration());
@@ -95,7 +93,6 @@ public class HandleServiceImpl1 implements HandleService1 {
             job.setInputFormatClass(ImageFileInputFormat.class); //设置输入类型
             job.setOutputKeyClass(IntWritable.class);  //设置输出类型
             job.setOutputValueClass(IntWritable.class);
-
             //mapreduce
             FileInputFormat.setInputPaths(job,fileStatus.getPath());
             FileOutputFormat.setOutputPath(job,outputPath);

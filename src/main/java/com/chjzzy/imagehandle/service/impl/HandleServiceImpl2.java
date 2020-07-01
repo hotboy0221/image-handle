@@ -37,7 +37,7 @@ public class HandleServiceImpl2 implements HandleService2 {
 
 
     @Override
-    public ImageModel search(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
+    public synchronized ImageModel search(BufferedImage bufferedImage) throws IOException, ClassNotFoundException, InterruptedException {
         searchArray=new int[256];
         for(int i=0;i<bufferedImage.getHeight();i++){
             for(int j=0;j<bufferedImage.getWidth();j++){

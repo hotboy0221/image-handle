@@ -4,8 +4,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.chjzzy.imagehandle.service.HandleService4;
 import com.chjzzy.imagehandle.util.HadoopUtil;
 import com.chjzzy.imagehandle.util.HbaseUtil;
+import com.chjzzy.imagehandle.util.ImageFileInputFormat;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -18,8 +21,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.LinkedList;
@@ -52,12 +57,13 @@ public class HandleServiceImpl4 implements HandleService4 {
         if(hadoopUtil.getFileSystem().exists(outputPath)){
             hadoopUtil.getFileSystem().delete(outputPath,true);
         }
-        FileStatus[]fileStatusList=hadoopUtil.getSonPath("split-data");
+        FileStatus[]fileStatusList=hadoopUtil.getSonPath("image-data/bossbase图片库");
         Job job = Job.getInstance(hadoopUtil.getConfiguration());
-        job.setMapperClass(HandleServiceImpl3.mapperHandle.class);
-        job.setReducerClass(HandleServiceImpl3.reducerHandle.class);
+        job.setMapperClass(mapperHandle.class);
+        job.setReducerClass(reducerHandle.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
+        job.setInputFormatClass(ImageFileInputFormat.class);
         FileOutputFormat.setOutputPath(job,outputPath);
         for(FileStatus fileStatus:fileStatusList) {
             FileInputFormat.addInputPath(job,fileStatus.getPath());
@@ -65,20 +71,21 @@ public class HandleServiceImpl4 implements HandleService4 {
         job.waitForCompletion(true);
         //read result
         BufferedReader bufferedReader=new BufferedReader(new InputStreamReader( hadoopUtil.getFile(new Path("question4/part-r-00000"))));
-        String line=null;
+
         String pointStr=null;
         int max=Integer.MAX_VALUE;
+        String line=null;
         while((line=bufferedReader.readLine())!=null){
-            String[] strs=bufferedReader.readLine().split("\t");
+            String[] strs=line.split("\t");
             int k=Integer.valueOf(strs[1]);
             if(k<max){
                 result.put("name",strs[0]);
                 max=k;
-                pointStr=strs[1];
+                pointStr=strs[2];
             }
         }
 
-        result.put("bytecode",hbaseUtil.getData("image",(String)result.get("name"),"info","bytecode"));
+        result.put("bytecode", Bytes.toString(hbaseUtil.getData("image",(String)result.get("name"),"info","bytecode")));
 
         String []point=pointStr.split("-");
         List<Point>pointList=new LinkedList<>();
@@ -114,53 +121,36 @@ public class HandleServiceImpl4 implements HandleService4 {
             this.col = col;
         }
     }
-    public static class mapperHandle extends Mapper<LongWritable, Text,Text,Text> {
+    public static class mapperHandle extends Mapper<Object , BytesWritable ,Text,Text> {
+        volatile int sum=Integer.MAX_VALUE;
+        public void map(Object key, BytesWritable value, Context context) throws IOException, InterruptedException {
 
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            int sum=Integer.MAX_VALUE;
-            List<Point>alterPoints=null;
-            //获取256*256的部分图来验证
+
+            List<Point>alterPoints=new LinkedList<>();
+            //获取图来验证
             String inputFileName=((FileSplit)context.getInputSplit()).getPath().getName();
-            String[] partArrays=value.toString().split("\t");
-            int [][]validateArray=new int[partArrays.length][];
-            for(int i=0; i<partArrays.length;i++){
-                String[]x=partArrays[i].split(" ");
-                validateArray[i]=new int[x.length];
-                for(int j=0;j<x.length;j++){
-                    validateArray[i][j]=Integer.valueOf(x[j]);
-                }
-            }
-            int matchI=validateArray.length-searchArray.length;
-            int matchJ=validateArray[0].length-searchArray[0].length;
+            inputFileName=inputFileName.substring(0,inputFileName.length()-4);
+            BufferedImage image= ImageIO.read(new ByteArrayInputStream(value.getBytes()));
+            //获取图片灰度值矩阵
+            for(int i=0;i<image.getHeight();i++) {
+                for(int j=0;j<image.getWidth();j++) {
 
-            for(int i=0;i<=matchI;i++){
-                for(int j=0;j<matchJ;j++){
-                    List<Point> pointList= notMatch(validateArray,searchArray,i,j,sum);
-                    if(pointList!=null&&sum>pointList.size()){
-                         sum=pointList.size();
-                         alterPoints=pointList;
-                    }
-                }
-            }
-            context.write(new Text(inputFileName),new Text(convertToString(alterPoints)));
-        }
-
-
-        //查找不匹配的点
-        private  List<Point>  notMatch(int[][] validateArr,int [][]searchArr,int offsetI,int offsetJ,int max){
-            List<Point> pointList=new LinkedList<>();
-            for(int i=0;i<searchArr.length;i++){
-                for(int j=0;j<searchArr.length;j++){
-                    if(searchArr[i][j]!=validateArr[i+offsetI][j+offsetJ]){
-                        pointList.add(new Point(i,j));
-                        if(pointList.size()>=max){
-                            return null;
+                    int rgb=image.getRGB(i, j);
+                    //计算灰度值
+                    int v= ((rgb&0xff)+((rgb>>8)&0xff)+((rgb>>16)&0xff))/3;
+                    if(searchArray[i][j]!=v) {
+                        alterPoints.add(new Point(i, j));
+                        if(alterPoints.size()>sum||alterPoints.size()>10000){
+                            return ;
                         }
                     }
                 }
             }
-            return pointList;
+            sum=alterPoints.size();
+            context.write(new Text(inputFileName),new Text(convertToString(alterPoints)));
         }
+
+
         private String convertToString(List<Point> points){
             StringBuilder sb=new StringBuilder();
             sb.append(points.size());
@@ -186,8 +176,6 @@ public class HandleServiceImpl4 implements HandleService4 {
                     value=text;
                 }
             }
-
-            System.out.println(key.toString()+" "+value.toString());
             context.write(key,value);
         }
     }
